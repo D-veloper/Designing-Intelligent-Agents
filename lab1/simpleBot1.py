@@ -12,12 +12,13 @@ class Brain():
     # modify this to change the robot's behaviour
     def thinkAndAct(self, lightL, lightR, x, y, sl, sr):
         # wheels not moving - no movement - no response to light
+        total_light = lightL + lightR
         self.moves = self.moves+1 if self.moves < 100 else 0  # increment distance on each turn. reset to 0 on 100.
         random_turn = random.randint(1,2)  # randomly select a direction. 1 - left, 2 -right
         #  set leftSpeed to 10 if distance is 60 and bot chose left or is already going left and was not going right.
-        speedLeft = 10 if self.moves > 59 and (random_turn == 1 or sl == 10) and sr!= 10 else 5
+        speedLeft = 10 if self.moves > 59 and (random_turn == 1 or sl == 10) and sr != 10 else 3 * total_light
         #  set rightSpeed to 10 so bot turns right if it did not choose left at random.
-        speedRight = 10 if self.moves > 59 and speedLeft == 5 else 5
+        speedRight = 10 if self.moves > 59 and speedLeft != 10 else 3 * total_light
         newX = 1 if x > 999 else 999 if x < 1 else None
         newY = 1 if y > 999 else 999 if y < 1 else None
         return speedLeft, speedRight, newX, newY
