@@ -8,13 +8,14 @@ class Brain():
     def __init__(self,botp):
         self.bot = botp
         self.moves = 0  # attribute to estimate distance covered by bot.
+        self.batteryLevel = 100
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, lightL, lightR, x, y, sl, sr):
         # wheels not moving - no movement - no response to light
         # total_light = lightL + lightR
         self.moves = self.moves+1 if self.moves < 90 else 0  # increment distance on each turn. reset to 0 on 100.
-
+        self.batteryLevel = max(self.batteryLevel - 1, 0) if self.moves % 10 == 0 and self.batteryLevel > 0 else self.batteryLevel
         # Make the bot turn left and right at random with speed depending on proximity to light source.
         random_turn = random.randint(1,2)  # randomly select a direction. 1 - left, 2 -right
         # #  set leftSpeed to 10 if distance is 60 and bot chose left or is already going left and was not going right.
@@ -129,6 +130,8 @@ class Bot():
     # handles the physics of the movement
     # cf. Dudek and Jenkin, Computational Principles of Mobile Robotics
     def move(self,canvas,dt):
+        if self.brain.batteryLevel == 0:
+            return 
         if self.sl==self.sr:
             R = 0
         else:
