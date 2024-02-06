@@ -183,7 +183,7 @@ class Bot():
     # handles the physics of the movement
     # cf. Dudek and Jenkin, Computational Principles of Mobile Robotics
     def move(self,canvas,dt):
-        print(self.battery)
+        # print(self.battery)
         if self.battery==0:
             self.sl = 0
             self.sl = 0
@@ -213,12 +213,14 @@ class Bot():
         canvas.delete(self.name)
         self.draw(canvas)
 
-    def collectDirt(self, canvas, passiveObjects):
+    def collectDirt(self, canvas, passiveObjects, dirt_count):
         toDelete = []
         for idx,rr in enumerate(passiveObjects):
             if isinstance(rr,Dirt):
                 if self.distanceTo(rr)<30:
                     canvas.delete(rr.name)
+                    dirt_count.itemCollected()
+                    print(dirt_count.dirtCollected)
                     toDelete.append(idx)
         for ii in sorted(toDelete,reverse=True):
             del passiveObjects[ii]
@@ -282,6 +284,13 @@ class Dirt:
         return self.centreX, self.centreY
 
 
+class Count:
+    def __init__(self):
+        self.dirtCollected = 0
+
+    def itemCollected(self):
+        self.dirtCollected += 1
+
 def initialise(window):
     window.resizable(False,False)
     canvas = tk.Canvas(window,width=1000,height=1000)
@@ -320,25 +329,27 @@ def createObjects(canvas,noOfBots=2,noOfLights=2,amountOfDirt=300):
     passiveObjects.append(hub2)
     hub2.draw(canvas)
 
+    count = Count()
+
     for i in range(0,amountOfDirt):
         dirt = Dirt("Dirt"+str(i))
         passiveObjects.append(dirt)
         dirt.draw(canvas)
     canvas.bind( "<Button-1>", lambda event: buttonClicked(event.x,event.y,agents) )
-    return agents, passiveObjects
+    return agents, passiveObjects, count
 
-def moveIt(canvas,agents,passiveObjects):
+def moveIt(canvas,agents,passiveObjects, dirt_count):
     for rr in agents:
         rr.thinkAndAct(agents,passiveObjects)
         rr.update(canvas,passiveObjects,1.0)
-        passiveObjects = rr.collectDirt(canvas,passiveObjects)
-    canvas.after(50,moveIt,canvas,agents,passiveObjects)
+        passiveObjects = rr.collectDirt(canvas,passiveObjects, dirt_count)
+    canvas.after(50,moveIt,canvas,agents,passiveObjects, dirt_count)
 
 def main():
     window = tk.Tk()
     canvas = initialise(window)
-    agents, passiveObjects = createObjects(canvas,noOfBots=2,noOfLights=0,amountOfDirt=300)
-    moveIt(canvas,agents,passiveObjects)
+    agents, passiveObjects, dirt_count = createObjects(canvas,noOfBots=1,noOfLights=0,amountOfDirt=300)
+    moveIt(canvas,agents,passiveObjects, dirt_count)
     window.mainloop()
 
 main()
