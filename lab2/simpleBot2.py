@@ -12,6 +12,7 @@ class Brain():
         self.turningCount = 0
         self.movingCount = random.randrange(50,100)
         self.currentlyTurning = False
+        self.map = np.zeros((10, 10))
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, lightL, lightR, chargerL, chargerR, x, y, sl, sr, battery):
@@ -61,6 +62,12 @@ class Brain():
 
         return speedLeft, speedRight, newX, newY
 
+    def updateMap(self, x, y, canvas, map):
+        xMapPosition = int(math.floor(x/101))
+        yMapPosition = int(math.floor(y/101))
+        self.map[yMapPosition, xMapPosition] = 1
+        map.change_colour(canvas, yMapPosition, xMapPosition)
+
 class Bot():
 
     def __init__(self,namep):
@@ -86,6 +93,9 @@ class Bot():
         
     def setBrain(self,brainp):
         self.brain = brainp
+
+    # def drawMap(self, canvas):
+    #     self.canvas.create_rectangle(100*xx, )
 
     #returns the output from polling the light sensors
     def senseLight(self, passiveObjects):
@@ -122,7 +132,7 @@ class Bot():
         return math.sqrt( math.pow(self.x-xx,2) + math.pow(self.y-yy,2) )
 
     # what happens at each timestep
-    def update(self,canvas,passiveObjects,dt):
+    def update(self,canvas,passiveObjects,dt, map):
         # for now, the only thing that changes is that the robot moves
         #   (using the current settings of self.sl and self.sr)
         self.battery -= 1
@@ -131,7 +141,7 @@ class Bot():
                 self.battery += 10
         if self.battery<=0:
             self.battery = 0
-        self.move(canvas,dt)
+        self.move(canvas,dt, map)
 
     # draws the robot at its current position
     def draw(self,canvas):
@@ -184,7 +194,7 @@ class Bot():
 
     # handles the physics of the movement
     # cf. Dudek and Jenkin, Computational Principles of Mobile Robotics
-    def move(self,canvas,dt):
+    def move(self,canvas,dt, map):
         # print(self.battery)
         if self.battery==0:
             self.sl = 0
@@ -212,6 +222,8 @@ class Bot():
         if self.sl==self.sr: # straight line movement
             self.x += self.sr*math.cos(self.theta) #sr wlog
             self.y += self.sr*math.sin(self.theta)
+
+        self.brain.updateMap(self.x, self.y,canvas, map)
         canvas.delete(self.name)
         self.draw(canvas)
 
@@ -227,7 +239,27 @@ class Bot():
         for ii in sorted(toDelete,reverse=True):
             del passiveObjects[ii]
         return passiveObjects
-        
+
+class Map():
+    def __init__(self):
+        self.rectangles = {}
+
+    def draw(self, canvas, rows, cols, width, height):
+        for row in range(rows):
+            for col in range(cols):
+                x1 = col * width
+                y1 = row * height
+                x2 = x1 + width
+                y2 = y1 + height
+                map_rectangle = canvas.create_rectangle(x1, y1, x2, y2, fill="white", outline="black")
+                rectangle_id = (row, col)
+                self.rectangles[rectangle_id] = map_rectangle
+
+    def change_colour(self, canvas, row, col):
+        rectangle_id = (row, col)
+        map_rectangle = self.rectangles[rectangle_id]
+        canvas.itemconfig(map_rectangle, fill="blue")
+
 
 class Lamp():
     def __init__(self,namep):
@@ -338,6 +370,9 @@ def createObjects(canvas,noOfBots=2,noOfLights=2,amountOfDirt=300):
     passiveObjects.append(hub2)
     hub2.draw(canvas)
 
+    map = Map()
+    map.draw(canvas, 10, 10, 20, 20)
+
     count = Count()
 
     for i in range(0,amountOfDirt):
@@ -345,27 +380,28 @@ def createObjects(canvas,noOfBots=2,noOfLights=2,amountOfDirt=300):
         passiveObjects.append(dirt)
         dirt.draw(canvas)
     canvas.bind( "<Button-1>", lambda event: buttonClicked(event.x,event.y,agents) )
-    return agents, passiveObjects, count
+    return agents, passiveObjects, count, map
 
-def endProgramme(start_time):
+def endProgramme(start_time, dirt_count):
     end_time = time.time()
-    if end_time - start_time > 5:
+    if end_time - start_time > 30:
+        print("Dirt collected: " + str(dirt_count.dirtCollected))
         sys.exit()
 
-def moveIt(canvas,agents,passiveObjects, dirt_count, start_time):
-    endProgramme(start_time)
+def moveIt(canvas,agents,passiveObjects, dirt_count, start_time,map):
+    endProgramme(start_time, dirt_count)
     for rr in agents:
         rr.thinkAndAct(agents,passiveObjects)
-        rr.update(canvas,passiveObjects,1.0)
+        rr.update(canvas,passiveObjects,1.0,map)
         passiveObjects = rr.collectDirt(canvas,passiveObjects, dirt_count)
-    canvas.after(50,moveIt,canvas,agents,passiveObjects, dirt_count, start_time)
+    canvas.after(50,moveIt,canvas,agents,passiveObjects, dirt_count, start_time, map)
 
 def main():
     start_time = time.time()
     window = tk.Tk()
     canvas = initialise(window)
-    agents, passiveObjects, dirt_count = createObjects(canvas,noOfBots=1,noOfLights=0,amountOfDirt=300)
-    moveIt(canvas,agents,passiveObjects, dirt_count, start_time)
+    agents, passiveObjects, dirt_count, map = createObjects(canvas,noOfBots=1,noOfLights=0,amountOfDirt=300)
+    moveIt(canvas,agents,passiveObjects, dirt_count, start_time, map)
     window.mainloop()
 
 main()
