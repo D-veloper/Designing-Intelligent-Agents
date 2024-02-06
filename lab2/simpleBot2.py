@@ -219,8 +219,8 @@ class Bot():
             if isinstance(rr,Dirt):
                 if self.distanceTo(rr)<30:
                     canvas.delete(rr.name)
-                    dirt_count.itemCollected()
-                    print(dirt_count.dirtCollected)
+                    dirt_count.itemCollected(canvas)
+                    # print(dirt_count.dirtCollected)
                     toDelete.append(idx)
         for ii in sorted(toDelete,reverse=True):
             del passiveObjects[ii]
@@ -288,7 +288,14 @@ class Count:
     def __init__(self):
         self.dirtCollected = 0
 
-    def itemCollected(self):
+    def itemCollected(self, canvas):
+        if not hasattr(self, 'text_item'):
+            # If the text item doesn't exist, create it
+            self.text_item = canvas.create_text(100, 100, text="Dirt collected: " + str(self.dirtCollected), fill="red")
+        else:
+            # Update the existing text item
+            canvas.itemconfig(self.text_item, text="Dirt collected: " + str(self.dirtCollected))
+
         self.dirtCollected += 1
 
 def initialise(window):
