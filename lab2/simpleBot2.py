@@ -1,7 +1,9 @@
+import sys
 import tkinter as tk
 import random
 import math
 import numpy as np
+import time
 
 class Brain():
 
@@ -345,18 +347,25 @@ def createObjects(canvas,noOfBots=2,noOfLights=2,amountOfDirt=300):
     canvas.bind( "<Button-1>", lambda event: buttonClicked(event.x,event.y,agents) )
     return agents, passiveObjects, count
 
-def moveIt(canvas,agents,passiveObjects, dirt_count):
+def endProgramme(start_time):
+    end_time = time.time()
+    if end_time - start_time > 5:
+        sys.exit()
+
+def moveIt(canvas,agents,passiveObjects, dirt_count, start_time):
+    endProgramme(start_time)
     for rr in agents:
         rr.thinkAndAct(agents,passiveObjects)
         rr.update(canvas,passiveObjects,1.0)
         passiveObjects = rr.collectDirt(canvas,passiveObjects, dirt_count)
-    canvas.after(50,moveIt,canvas,agents,passiveObjects, dirt_count)
+    canvas.after(50,moveIt,canvas,agents,passiveObjects, dirt_count, start_time)
 
 def main():
+    start_time = time.time()
     window = tk.Tk()
     canvas = initialise(window)
     agents, passiveObjects, dirt_count = createObjects(canvas,noOfBots=1,noOfLights=0,amountOfDirt=300)
-    moveIt(canvas,agents,passiveObjects, dirt_count)
+    moveIt(canvas,agents,passiveObjects, dirt_count, start_time)
     window.mainloop()
 
 main()
