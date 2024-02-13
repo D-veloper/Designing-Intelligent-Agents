@@ -47,7 +47,7 @@ class Brain():
                         thresh_values.append(max(value_tuple[0]))
 
             if len(thresh_values) > 1:
-                self.danger_threshold = sum(thresh_values) / len(thresh_values)
+                self.danger_threshold = abs((sum(thresh_values) / len(thresh_values)) - 0.05)
                 self.learned = True
 
         #  Predict if collision is imminent based on processed sensor info
@@ -136,6 +136,9 @@ class Bot():
     def reactToDanger(self, agents):
         # print("dangerous situation")
         self.warning_sound.play()
+        for agent in agents:
+            if isinstance(agent, Cat):
+                agent.jump()
         # define the reaction to danger here
         
     def look(self,agents):
