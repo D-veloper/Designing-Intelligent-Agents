@@ -17,6 +17,7 @@ class Brain():
         self.time = 0
         self.training_set = []
         self.danger_threshold = 0
+        self.learned = False
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, lightL, lightR, chargerL, chargerR, x, y, sl, sr,\
@@ -27,11 +28,11 @@ class Brain():
 
         #  Gather training Data
         self.time += 1
-        if self.time < 1000:
+        if not self.learned:
             self.training_set.append((camera, collision))
 
         #  Process training Data
-        if self.time == 1000:
+        if self.time % 1000 == 0 and not self.learned:
             warning_values = [] # list of a list of 5 tuples. each tuple contains a list of 9 values and a boolean
             for i, set in enumerate(self.training_set):
                 if set[1]:
@@ -45,15 +46,14 @@ class Brain():
                     if sum(value_tuple[0]) > 0:
                         thresh_values.append(max(value_tuple[0]))
 
-            self.danger_threshold = sum(thresh_values) / len(thresh_values)
+            if len(thresh_values) > 1:
+                self.danger_threshold = sum(thresh_values) / len(thresh_values)
+                self.learned = True
 
         #  Predict if collision is imminent based on processed sensor info
-        if self.time > 1000:
-            for sensor_data in camera:
-                s_values = sensor_data[0]
-                if any(s_values > self.danger_threshold):
-                    dangerDetected = True
-                    break
+        if self.learned:
+            if any(value > self.danger_threshold for value in camera):
+                dangerDetected = True
         
         # wandering behaviour
         if self.currentlyTurning==True:
