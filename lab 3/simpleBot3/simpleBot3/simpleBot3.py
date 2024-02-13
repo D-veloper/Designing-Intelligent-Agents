@@ -1,4 +1,4 @@
-# from playsound import playsound
+import playsoundsimple as pss
 from PIL import Image, ImageTk
 import tkinter as tk
 import random
@@ -111,6 +111,7 @@ class Bot():
         self.sl = 0.0
         self.sr = 0.0
         self.battery = 1000
+        self.warning_sound = pss.Sound("436589__julien-matthey__jm-transport-ext-horn-01a-car-short-mini-countryman.wav")
  
 
     def thinkAndAct(self, agents, passiveObjects, canvas):
@@ -133,7 +134,8 @@ class Bot():
         self.brain = brainp
 
     def reactToDanger(self, agents):
-        print("dangerous situation")
+        # print("dangerous situation")
+        self.warning_sound.play()
         # define the reaction to danger here
         
     def look(self,agents):
