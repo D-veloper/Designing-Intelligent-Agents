@@ -16,6 +16,7 @@ class Brain():
         self.currentlyTurning = False
         self.time = 0
         self.training_set = []
+        self.danger_threshold = 0
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, lightL, lightR, chargerL, chargerR, x, y, sl, sr,\
@@ -31,6 +32,16 @@ class Brain():
                     if i > 3:
                         sensor_values = [self.training_set[i] for i in range(i-4, i+1)]
                         warning_values.append(sensor_values)
+
+            thresh_values = []
+            for list_of_values in warning_values:
+                for value_tuple in list_of_values:
+                    if sum(value_tuple[0]) > 0:
+                        thresh_values.append(max(value_tuple[0]))
+
+            self.danger_threshold = sum(thresh_values) / len(thresh_values)
+
+            print(self.danger_threshold)
 
 
         newX = None
