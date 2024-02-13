@@ -1,4 +1,4 @@
-from playsound import playsound
+# from playsound import playsound
 from PIL import Image, ImageTk
 import tkinter as tk
 import random
@@ -14,10 +14,25 @@ class Brain():
         self.turningCount = 0
         self.movingCount = random.randrange(50,100)
         self.currentlyTurning = False
+        self.time = 0
+        self.training_set = []
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, lightL, lightR, chargerL, chargerR, x, y, sl, sr,\
                     battery, camera, collision):
+        self.time += 1
+        if self.time < 1000:
+            self.training_set.append((camera, collision))
+
+        if self.time == 1000:
+            warning_values = [] # list of a list of 5 tuples. each tuple contains a list of 9 values and a boolean
+            for i, set in enumerate(self.training_set):
+                if set[1]:
+                    if i > 3:
+                        sensor_values = [self.training_set[i] for i in range(i-4, i+1)]
+                        warning_values.append(sensor_values)
+
+
         newX = None
         newY = None
         dangerDetected = False
@@ -286,7 +301,7 @@ class Bot():
         for rr in agents:
             if isinstance(rr,Cat):
                 if self.distanceTo(rr)<50.0:
-                    playsound("385892__spacether__262312-steffcaffrey-cat-meow1.mp3",block=False)
+                    # playsound("385892__spacether__262312-steffcaffrey-cat-meow1.mp3",block=False)
                     collision = True
                     rr.jump()
         return collision
