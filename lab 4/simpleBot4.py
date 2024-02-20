@@ -62,6 +62,28 @@ class Bot():
         self.passiveObjects = passiveObjectsp
         self.counter = counterp
 
+    # pos is a tuple (0,0), (0,1), (1, 0), (1, 1)
+    # represents top left, top right, bottom left and bottom right respectively
+    def place_in_corner(self, pos):
+        if pos == (0, 0):
+            self.x = 50
+            self.y = 50
+            self.theta = -1.0*math.pi/4.0
+        elif pos == (0, 1):
+            self.x = 950
+            self.y = 50
+            self.theta = -3.0*math.pi/4.0
+        elif pos == (1, 0):
+            self.x = 50
+            self.y = 950
+            self.theta = -1.0*math.pi/4.0
+        elif pos == (1, 1):
+            self.x = 950
+            self.y = 950
+            self.theta = -3.0*math.pi/4.0
+        else:
+            return
+
     def thinkAndAct(self, agents, passiveObjects):
         self.sl, self.sr, xx, yy = self.brain.thinkAndAct\
             (self.x, self.y, self.sl, self.sr, self.counter.dirtCollected)
@@ -268,6 +290,8 @@ def createObjects(canvas):
     brain = Brain(bot)
     bot.setBrain(brain)
     agents.append(bot)
+    bottom_right = (1, 1)
+    bot.place_in_corner(bottom_right)
     bot.draw(canvas)
 
     canvas.bind( "<Button-1>", lambda event: buttonClicked(event.x,event.y,agents) )
