@@ -14,7 +14,7 @@ def makeSpecificGrid():
         grid[xx][0] = random.randrange(4,5)
     grid[0][0] = 1
     grid[9][9] = 0
-    print(grid)
+    # print(grid)
     return grid
 
 def makeSpecificGrid2():
@@ -109,9 +109,9 @@ def aStarSearch(grid):
             path.append( (possPosition2x,possPosition2y) )
             pathGrid[possPosition2x][possPosition2y] = 1
             currentPosition = (possPosition2x,possPosition2y)
-    print(grid)
-    print(path)
-    print(pathGrid)
+    # print(grid)
+    # print(path)
+    # print(pathGrid)
     return(path)
 
 aStarSearch(makeSpecificGrid())
