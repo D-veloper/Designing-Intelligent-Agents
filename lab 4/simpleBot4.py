@@ -2,6 +2,7 @@ import tkinter as tk
 import random
 import math
 import numpy as np
+from aStar import aStarSearch
 
 class Brain():
 
@@ -11,7 +12,8 @@ class Brain():
         self.movingCount = random.randrange(50,100)
         self.currentlyTurning = False
         self.map = self.bot.map()
-        print(self.map)
+        self.path = aStarSearch(self.map)
+        print(self.path)
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, x, y, sl, sr, count):
