@@ -13,28 +13,49 @@ class Brain():
         self.currentlyTurning = False
         self.map = self.bot.map()
         self.path = aStarSearch(self.map)
-        print(self.path)
+        # print(self.path)
 
     # modify this to change the robot's behaviour
     def thinkAndAct(self, x, y, sl, sr, count):
         newX = None
         newY = None
 
-        # wandering behaviour
-        if self.currentlyTurning==True:
+        # # wandering behaviour
+        # if self.currentlyTurning==True:
+        #     speedLeft = -2.0
+        #     speedRight = 2.0
+        #     self.turningCount -= 1
+        # else:
+        #     speedLeft = 5.0
+        #     speedRight = 5.0
+        #     self.movingCount -= 1
+        # if self.movingCount==0 and not self.currentlyTurning:
+        #     self.turningCount = random.randrange(20,40)
+        #     self.currentlyTurning = True
+        # if self.turningCount==0 and self.currentlyTurning:
+        #     self.movingCount = random.randrange(50,100)
+        #     self.currentlyTurning = False
+
+        # optimal dirt picking behaviour
+        # target is first coordinate in path list but scaled up.
+        target = ((self.path[0][1] * 100) + 50, (self.path[0][0] * 100) + 50)
+
+        # print("target: ", target, "bot pos: ", (self.bot.x, self.bot.y))
+
+        dist_to_targetL = self.bot.distanceToLeftSensor(target[0], target[1])
+        dist_to_targetR = self.bot.distanceToRightSensor(target[0], target[1])
+
+        print()
+
+        if dist_to_targetR > dist_to_targetL:
+            speedLeft = 2.0
+            speedRight = -2.0
+        elif dist_to_targetR < dist_to_targetL:
             speedLeft = -2.0
             speedRight = 2.0
-            self.turningCount -= 1
-        else:
+        if math.floor(abs(dist_to_targetL - dist_to_targetR)) < 2:
             speedLeft = 5.0
             speedRight = 5.0
-            self.movingCount -= 1
-        if self.movingCount==0 and not self.currentlyTurning:
-            self.turningCount = random.randrange(20,40)
-            self.currentlyTurning = True
-        if self.turningCount==0 and self.currentlyTurning:
-            self.movingCount = random.randrange(50,100)
-            self.currentlyTurning = False
 
         #toroidal geometry
         if x>1000:
