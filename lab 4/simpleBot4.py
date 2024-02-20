@@ -1,3 +1,4 @@
+import sys
 import tkinter as tk
 import random
 import math
@@ -20,6 +21,10 @@ class Brain():
         newX = None
         newY = None
 
+        if not self.path:
+            print(count)
+            sys.exit()
+
         # # wandering behaviour
         # if self.currentlyTurning==True:
         #     speedLeft = -2.0
@@ -38,14 +43,14 @@ class Brain():
 
         # optimal dirt picking behaviour
         # target is first coordinate in path list but scaled up.
-        target = ((self.path[0][1] * 100) + 50, (self.path[0][0] * 100) + 50)
+        target = ((self.path[0][0] * 100) + 50, (self.path[0][1] * 100) + 50)
 
         # print("target: ", target, "bot pos: ", (self.bot.x, self.bot.y))
 
         dist_to_targetL = self.bot.distanceToLeftSensor(target[0], target[1])
         dist_to_targetR = self.bot.distanceToRightSensor(target[0], target[1])
 
-        print()
+        # print(math.floor(abs(dist_to_targetL - dist_to_targetR)))
 
         if dist_to_targetR > dist_to_targetL:
             speedLeft = 2.0
@@ -53,9 +58,18 @@ class Brain():
         elif dist_to_targetR < dist_to_targetL:
             speedLeft = -2.0
             speedRight = 2.0
-        if math.floor(abs(dist_to_targetL - dist_to_targetR)) < 2:
+        if math.floor(abs(dist_to_targetL - dist_to_targetR)) < 3:
             speedLeft = 5.0
             speedRight = 5.0
+
+        # determine if bot has reached target location.
+        bot_pos = (self.bot.x, self.bot.y)
+        if (abs(bot_pos[0] - target[0]) < 5) and (abs(bot_pos[1] - target[1]) < 5):
+            if self.path:
+                self.path.pop(0)
+            # print("new target: ", self.path[0])
+
+        # print("target: ", ((self.path[0][1] * 100) + 50, (self.path[0][0] * 100) + 50), "bot pos: ", (self.bot.x, self.bot.y))
 
         #toroidal geometry
         if x>1000:
