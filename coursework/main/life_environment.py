@@ -1,10 +1,11 @@
 # This code builds on a tutorial by NeuralNine
 # Tutorial Title: Conway's Game of Life in Python
 # YouTube URL: https://www.youtube.com/watch?v=cRWg2SWuXtM
-# This script extensively modifies and extends the original code presented in the tutorial to suit specific needs.
+# This code extensively modifies and extends the original code presented in the tutorial to suit specific needs.
 
 import numpy as np
 import pygame
+
 
 class Environment:
     COLOUR_BG = (10, 10, 10)
@@ -73,7 +74,7 @@ class Environment:
 
         return new_grid if goto_next_generation else self.grid
 
-    def effect_agent_change(self, action_type, action_index, agent_responsible, screen, size, goto_next_generation=False):
+    def effect_agent_change(self, action_type, action_index, agent_responsible, screen, size):
         cell_value = 1
         colour = self.COLOUR_BG
         self.previous_grid = self.grid  # keep a record of what the grid was previously before doing agents bidding
@@ -102,42 +103,92 @@ class Environment:
 
         pygame.draw.rect(screen, colour, (action_index[1] * size, action_index[0] * size, size - 1, size - 1))
 
-        return self.grid
-
-    # the environment computes the rl_agent's reward
-    def compute_reward(self, current_grid, target_grid, steps_taken, action_type, action_coordinates):
-
-        difference = np.sum(current_grid != target_grid)  # calculate hamming distance between current and target grid
-
-        # print("hamming score is", difference)
-
-        similarity_score = max(0, len(current_grid.flatten()))
-
-        base_reward = similarity_score  # max base reward is the number of cells in the grid (perfect match)
-
+    def penalty_calculation(self, max_reward, steps_taken, action_type, action_coordinates):
         # calculate time penalty because we want agent to solve as quickly as possible
-        # time penalty ensures positive reward reduces but negative reward increases as time passes
-        time_penalty = (steps_taken / self.max_steps) * similarity_score  # time penalty is scaled linearly
+        # time penalty ensures positive reward reduces  as time passes
+        time_penalty_reward = max_reward - steps_taken
 
-        # if agent can't generate pattern after, max_steps, fail condition is reached
-        # once agent finds pattern, win condition is reached
-        final_reward = base_reward - time_penalty
+        final_reward = time_penalty_reward
+
+        # Apply rewards for actions closer to the center of the grid where the block is
+        center_x, center_y = (self.width // 2) - 1, (self.height // 2) - 1
+
+        if action_coordinates is not None:
+            row = action_coordinates[0]
+            col = action_coordinates[1]
+            distance_to_center = abs(row - center_y) + abs(col - center_x)
+            if distance_to_center <= 5:
+                final_reward += 50
 
         # check the state of the grid at the action coordinates before the action was taken
         cell_state = self.previous_grid[action_coordinates]
 
         # Apply penalties for unreasonable actions
         if action_type == 'kill' and cell_state == 0:  # Trying to kill an already dead cell
-            final_reward -= 50  # penalty for redundant kill action
+            final_reward -= 100  # penalty for redundant kill action
         elif action_type == 'revive' and cell_state == 1:  # trying to revive an already living cell
-            final_reward -= 50  # penalty for unreasonable 'revive' action
+            final_reward -= 100  # penalty for unreasonable 'revive' action
 
-        # check for pattern completion
-        if np.array_equal(current_grid, target_grid):
-            print("Target pattern achieved.")
-            final_reward += 100  # bonus points for achieving desired pattern
-        elif steps_taken > self.max_steps:
-            print("Failed to achieve target pattern within the allowed number of generations")
-            final_reward -= 50  # additional penalty for failing
+        # if agent can't generate pattern after, max_steps, fail condition is reached
+        # if steps_taken >= max_steps:
+        #     # print("Failed to achieve target pattern within the allowed number of generations")
+        #     final_reward -= 50  # additional penalty for failing
 
-        return final_reward
+        return final_reward, False
+
+    # the environment computes the rl_agent's reward
+    def compute_reward(self, max_reward, current_grid, target_grid, steps_taken, max_steps, action_type, action_coordinates):
+        # should return the reward and a flag to know if learning is complete
+        difference = np.sum(current_grid != target_grid)  # calculate hamming distance between current and target grid
+
+        if difference == 0:  # if the target has been achieved precisely
+            return max_reward, True
+
+        else:  # check if target was achieved but at a different location in the grid
+            max_reward = 50
+            reward, learning_completed = self.penalty_calculation(max_reward, steps_taken, action_type, action_coordinates)
+            return reward, learning_completed
+
+        # # check for pattern completion
+        # if np.array_equal(current_grid, target_grid):
+        #     print("Target pattern achieved.")
+        #     final_reward += 100  # bonus points for achieving desired pattern
+        # el
+
+        # return final_reward
+        #
+        # rows, cols = current_grid.shape
+        # found_blinker = False
+        #
+        # # check for blinker pattern horizontally for each row
+        # for i in range(rows):
+        #     for j in range(cols - 2):  # On each row, we don't look for blinker past the second to last cell
+        #         # check if there are three consecutive 1s and if those 1s are surrounded by zeros
+        #         if (current_grid[i, j:j + 3] == 1).all():  # checking for the blinker pattern
+        #             # Ensure it's surrounded by zeros horizontally or at boundary
+        #             horizontal_clear = (j == 0 or current_grid[i, j - 1] == 0) and \
+        #                                (j + 3 == cols or current_grid[i, j + 3] == 0)
+        #             # Ensure it's surrounded by zeros vertically or at boundary of grid
+        #             vertical_clear = (i == 0 or np.all(current_grid[i - 1, j:j + 3] == 0)) and \
+        #                              (i + 1 == rows or np.all(current_grid[i + 1, j:j + 3] == 0))
+        #             if horizontal_clear and vertical_clear:
+        #                 found_blinker = True
+        #
+        # # check for blinker pattern vertically for each column
+        # for j in range(cols):
+        #     for i in range(rows - 2):  # Avoid checking beyond the valid range
+        #         # Check if there are three consecutive 1s
+        #         if (current_grid[i:i + 3, j] == 1).all():
+        #             # Ensure it's surrounded by zeros vertically
+        #             vertical_clear = (i == 0 or current_grid[i - 1, j] == 0) and \
+        #                              (i + 3 == rows or current_grid[i + 3, j] == 0)
+        #             # Ensure it's surrounded by zeros horizontally
+        #             horizontal_clear = (j == 0 or np.all(current_grid[i:i + 3, j - 1] == 0)) and \
+        #                                (j + 1 == cols or np.all(current_grid[i:i + 3, j + 1] == 0))
+        #             if vertical_clear and horizontal_clear:
+        #                 found_blinker = True
+        #
+        # if found_blinker:
+        #     max_reward = 50 * max_steps
+        # else:
+        #     max_reward = 50

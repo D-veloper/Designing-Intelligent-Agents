@@ -10,12 +10,15 @@ from life_environment import Environment
 from agent_bob import RL_Agent
 import matplotlib.pyplot as plt
 
-width, height = 20, 20
+width, height = 4, 4  # make sure width and height are equal. some calculations break down if grid is not a square
+
+
 def main():
+
     # create pygame window
     pygame.init()
     screen = pygame.display.set_mode((width * Environment.SIZE, height * Environment.SIZE))
-    pygame.display.set_caption("Game of Life: Bob's Training")
+    pygame.display.set_caption("Game of Life Pattern Stabilization")
 
     # Todo: create lists of patterns we want to create and maintain
     # patterns_list = ["blinker"]
@@ -23,40 +26,48 @@ def main():
     # create simulation modes
     # there are two modes, manual (press space) and auto (press a)
     mode = 'manual'  # default mode is manual, user steps through generation by pressing space
-    continue_sim = True
+    continue_sim = True  # boolean to help toggle simulation between modes
 
     # create default instance of environment
-    max_steps = 10
-    env = Environment(width, height, max_steps)
+    max_steps = 5  # the desired number of steps agent should achieve goal under
+    env = Environment(width, height, max_steps)  # instance of the environment
 
     # create instance of rl_agent and training parameters
-    num_episodes = 50
-    scaler = num_episodes * max_steps
-    agent_Bob = RL_Agent(width, height, scaler)
+    num_episodes = 100  # number of training episodes
+    num_generations = 6  # limit of an episode. Once we reach here, episode terminates
+    input_size = width * height  # our input layer is the grid as a flat list so its size must be width * height
+    output_size = (2 * input_size) + 1  # output layer is a node to represent each action that can be done on each cell
+    agent_bob = RL_Agent(gamma=0.99, epsilon=1, lr=0.0042, input_layer=[input_size], batch_size=12,
+                         output_layer=output_size)
 
-    accuracy_scores = {}  # Dictionary to store accuracy scores for each episode
-    mean_accuracies = []  # list to store the mean accuracy of each episode
-
+    # getting information on agent performance
+    scores, eps_history = [], []
     # Todo: loop through pattern list, changing target pattern and max_steps in environment depending on pattern
     # for...
 
     # Start Training loop
     for episode in range(num_episodes):
         print(f"Starting episode {episode + 1}")
-        episode_scores = []  # list to store scores for the current episode
+
+        max_reward = 104
+
         env.initialize_block()  # start with a simple still life block
         env.initialize_blinker(env.target)  # initialise the target pattern.
-        env.update_grid(screen, Environment.SIZE)
+        # env.update_grid(screen, Environment.SIZE)
         pygame.display.flip()
 
-        step = 0
-        while step < max_steps:  # agent has a limited number of generations to figure stuff out
-            for event in pygame.event.get():
+        step = 0  # this tracks the number of steps we have taken
+        learning_complete = False  # this tracks if agent succeeded to learn how to stabilize pattern
+        score = 0
+
+        # agent has a limited number of generations to figure stuff out before episode ends
+        while not learning_complete and step < num_generations:
+            for event in pygame.event.get():  # player quits, close window.
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     return
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_a:  # if a button is pressed, mode is auto
+                    if event.key == pygame.K_a:  # if 'a' button is pressed, mode is auto
                         mode = 'auto' if mode == 'manual' else 'manual'  # toggle between modes
 
                     elif event.key == pygame.K_SPACE:
@@ -66,7 +77,7 @@ def main():
                             continue_sim = True
                             print(f"This is generation {step + 1}")
 
-                #Uncomment below to add or remove cells in real time:
+                # Note: Uncomment below to add or remove cells in real time:
                 # if pygame.mouse.get_pressed()[0]:
                 #     pos = pygame.mouse.get_pos()
                 #     if env.grid[pos[1] // env.SIZE, pos[0] // env.SIZE] == 1:
@@ -76,102 +87,81 @@ def main():
                 #     env.update_grid(screen, env.SIZE)
                 #     pygame.display.update()
 
-            if mode == 'auto' or continue_sim:
+            # if we are in manual mode and agent messes up the grid, reset it
+            if mode == 'manual' and np.sum(env.grid) <= 1:
+                env.initialize_block()
+                pygame.display.update()
+
+            elif mode == 'auto' or continue_sim:
+                # reset the grid but not the episode if agent's action messes everything completely.
+                if np.sum(env.grid) <= 1:
+                    env.initialize_block()
+                    pygame.display.update()
+
                 # agent assesses the environment and decides on an action
-                print(f"This is generation {step + 1}")
                 grid_state = env.grid
-                action_type, coordinates, probabilities = agent_Bob.get_action(grid_state)
+                best_action, action_type, coordinates = agent_bob.get_action(grid_state)
 
                 # next, apply the agents chosen action onto the environment
                 env.effect_agent_change(action_type, coordinates, 'bob', screen, Environment.SIZE)
                 pygame.display.update()
 
+                # get some debugging information
                 if coordinates is not None:
                     print(f"agent wants to {action_type} cell at ({coordinates[0], coordinates[1]})")
                 else:
                     print("The agent wants to do nothing")
 
-                # next,update the grid for the next generation
+                # next, update the grid for the next generation
                 env.grid = env.update_grid(screen, env.SIZE, goto_next_generation=True)
                 pygame.display.update()
 
                 # then we compute the agents reward based on the new grid state
-                reward = env.compute_reward(env.grid, env.target, step + 1, action_type, coordinates)
+                reward, learning_complete = env.compute_reward(max_reward, env.grid, env.target, step + 1,
+                                                               max_steps, action_type, coordinates)
 
-                # then we train the agent based on feedback from the environment, i.e. reward
-                if coordinates is not None:  # if the agent didn't choose to do nothing
-                    action_index = coordinates[0] * width + coordinates[1]
-                else:
-                    # if grid is 10 * 10, for example, that's 100 cells going from 0 to 99.
-                    # the output layer has an extra node, e.g. 101, to represent do nothing
-                    # so 101 node is at position 100. action_index at do nothing is width * height
-                    action_index = width * height  # index of 'do nothing'.
-                agent_Bob.train(probabilities, action_index, reward)
+                score += reward  # update the score
+                #scores.append(reward)
+
+                new_state = env.grid  # save the new state
+
+                # if learning_complete:  # pause the simulation, so we can see the correct pattern has been achieved
+                #     mode = 'manual'
+
+                # store current results in agents memory and train it
+                agent_bob.store_transition(grid_state, best_action, reward, new_state, learning_complete)
+                agent_bob.train()
 
                 step += 1
-                agent_Bob.steps_taken += 1
+                max_reward -= 1
                 continue_sim = False  # so that simulation stops if we are in manual mode
 
-                # calculate accuracy based on reward:
-                accuracy_score = calculate_accuracy_score(reward)
-                episode_scores.append(accuracy_score)
+        # note the scores at the end of each episode
+        scores.append(score)
+        eps_history.append(agent_bob.epsilon)
+        # avg_score = np.mean(scores)
 
         # we have reached the desired generation limit
         print("Max steps reached. Resetting environment.")
-
-        # save all the accuracy scores for that episode
-        accuracy_scores[episode] = episode_scores
-        mean_accuracy = np.mean(episode_scores)
-        mean_accuracies.append(mean_accuracy)
-
-        if episode == num_episodes - 1:
-            plot_accuracy(accuracy_scores)
-            plot_mean_accuracies(mean_accuracies)
-
-        env.grid = np.zeros((env.height, env.width))
-        env.initialize_block()
-        env.update_grid(screen, Environment.SIZE)
-        pygame.display.flip()
+        if mode == 'auto' or continue_sim:
+            env.grid = np.zeros((env.height, env.width))
+            env.initialize_block()
+            env.update_grid(screen, Environment.SIZE)
+            pygame.display.flip()
 
         time.sleep(0.001)
 
+    # plot learning curve
+    plot_learning_curve(scores)
 
-def calculate_accuracy_score(reward):
-    base_reward = width * height
-    bonus = 100
-    max_reward = base_reward + bonus
-    return (reward / max_reward) * 100
-
-
-def plot_accuracy(accuracy_scores):
-    num_episodes = len(accuracy_scores)
-
-    first_idx = 0
-    middle_idx = num_episodes // 2
-    last_idx = num_episodes - 1
-
-    selected_indices = [first_idx, middle_idx, last_idx]
-
-    # Create a figure and subplots; one subplot per episode in a single column
-    fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(8, 15))
-    fig.suptitle("Accuracy Score Over Each Generation for First, Middle, and Last Episodes")
-
-    # Loop through each subplot and plot the accuracy scores for each episode
-    for plot_idx, episode_idx in enumerate(selected_indices):
-        episode = list(accuracy_scores.keys())[episode_idx]  # Get episode number from index
-        scores = accuracy_scores[episode]  # Get scores for the selected episode
-
-        ax = axes[plot_idx]  # Select the appropriate subplot
-        ax.plot(scores, label=f'Episode {episode + 1}')
-        ax.set_xlabel('Generation')
-        ax.set_ylabel('Accuracy Score')
-        ax.set_ylim(0, 100)
-        ax.set_title(f'Episode {episode + 1}')
-        ax.legend()
-
-    # Adjust the layout to make room for the main title
-    plt.tight_layout(pad=4.0)
-
+def plot_learning_curve(scores):
+    plt.figure(figsize=(10, 5))
+    plt.plot(scores, label='Plot of reward model earns per episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Mean Accuracy')
+    #plt.ylim(-100, 100)
+    plt.title('Plot of Total Reward Earned Per Episode')
+    plt.legend()
     plt.show()
 
 
@@ -190,7 +180,7 @@ if __name__ == '__main__':
     main()
 
 
-    # env.initialize_blinker(env.target)
+# env.initialize_blinker(env.target)
     # target_pattern = env.target
     # env.initialize_block()
     # env.update_grid(screen, Environment.SIZE)
